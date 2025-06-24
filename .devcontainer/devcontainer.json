@@ -1,0 +1,81 @@
+{
+  "name": "mcps",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "PROJECT_DIR": "${env:HOME}${env:USERPROFILE}/projects/container/mcps"
+    }
+  },
+  "overrideCommand": false,
+  "containerUser": "vscode",
+  "postStartCommand": "deno run --allow-all https://raw.githubusercontent.com/ghostmind-dev/init/main/init/main.ts",
+  "postCreateCommand": "deno run --allow-all /usr/local/share/post-create.ts",
+  "remoteUser": "vscode",
+  "remoteEnv": {
+    "SRC": "${containerWorkspaceFolder}",
+    "LOCALHOST_SRC": "${env:HOME}${env:USERPROFILE}/projects/container/mcps",
+    "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
+    "VAULT_ROOT_TOKEN": "${localEnv:VAULT_ROOT_TOKEN}",
+    "VAULT_ADDR": "${localEnv:VAULT_ADDR}"
+  },
+  "containerEnv": {
+    "INIT_RESET_LIVE": "true",
+    "INIT_LOGIN_GCP": "true",
+    "INIT_LOGIN_GHCR": "false",
+    "INIT_LOGIN_CLOUDFLARE": "true",
+    "WHY_AM_I_HERE": "true"
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
+    "source=/var/run/docker.sock,target=/var/run/docker-host.sock,type=bind",
+    "source=ghostmind-mcps-history,target=/commandhistory,type=volume",
+    "source=${env:HOME}${env:USERPROFILE}/projects/container/mcps,target=/Users/francoisseguin/projects/container/mcps,type=bind"
+  ],
+  "runArgs": [
+    "--cap-add=CAP_IPC_LOCK",
+    "--cap-add=NET_ADMIN",
+    "--network=host",
+    "--name=mcps"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-azuretools.vscode-docker",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "esbenp.prettier-vscode",
+        "humao.rest-client",
+        "sdras.inbedby7pm",
+        "william-voyek.vscode-nginx",
+        "foxundermoon.shell-format",
+        "hashicorp.terraform",
+        "mikestead.dotenv",
+        "hashicorp.hcl",
+        "equinusocio.vsc-material-theme",
+        "wesbos.theme-cobalt2",
+        "sumneko.lua",
+        "ghostmind.hide-unhide",
+        "tinkertrain.theme-panda",
+        "golang.go",
+        "yinfei.luahelper",
+        "graphql.vscode-graphql",
+        "graphql.vscode-graphql-syntax",
+        "jdinhlife.gruvbox",
+        "styled-components.vscode-styled-components",
+        "be5invis.vscode-icontheme-nomo-dark",
+        "pkief.material-icon-theme",
+        "mtxr.sqltools",
+        "github.copilot-chat",
+        "github.copilot-nightly",
+        "ms-python.python",
+        "prisma.prisma",
+        "bradlc.vscode-tailwindcss",
+        "mariorodeghiero.vue-theme",
+        "denoland.vscode-deno",
+        "vscode-icons-team.vscode-icons",
+        "ms-toolsai.jupyter",
+        "github.vscode-pull-request-github",
+        "hediet.vscode-drawio"
+      ]
+    }
+  }
+}

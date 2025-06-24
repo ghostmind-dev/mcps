@@ -1,0 +1,40 @@
+{
+  "id": "ui-8Ilv3zuKx",
+  "name": "configs",
+  "type": "template",
+  "secrets": {
+    "base": "base"
+  },
+  "docker": {
+    "default": {
+      "root": "docker",
+      "image": "gcr.io/ghostmind-core/${PROJECT}-${APP}",
+      "env_based": false,
+      "context_dir": "app"
+    }
+  },
+  "compose": {
+    "default": {
+      "root": "local",
+      "filename": "compose.yaml"
+    }
+  },
+  "terraform": {
+    "default": {
+      "path": "infra",
+      "global": false,
+      "containers": ["default"]
+    }
+  },
+  "mcp": {
+    "update_configs": {
+      "url": "http://localhost:3008/mcp",
+      "headers": {
+        "Authorization": "Bearer ${SERVER_TOKEN}"
+      }
+    }
+  },
+  "template": {
+    "init": ["run vault kv export --all", "run meta change id"]
+  }
+}
