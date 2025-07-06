@@ -27,7 +27,7 @@
     }
   },
   "mcp": {
-    "update_global_configs": {
+    "_update_global_configs_dev": {
       "url": "${SERVER_URL}/mcp",
       "headers": {
         "Authorization": "Bearer ${SERVER_TOKEN}"

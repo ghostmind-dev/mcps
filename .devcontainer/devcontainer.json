@@ -9,9 +9,9 @@
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/ghostmind-dev/features/extensions:latest": {},
     "ghcr.io/ghostmind-dev/features/themes:latest": {},
-    "ghcr.io/ghostmind-dev/features/settings:latest": {},
+    "ghcr.io/ghostmind-dev/features/settings:1.0.5": {},
     "ghcr.io/ghostmind-dev/features/init:latest": {
-      "resetLive": "true"
+      "resetLive": true
     },
     "ghcr.io/ghostmind-dev/features/zsh:latest": {
       "theme": "codespaces"
@@ -36,7 +36,8 @@
   "mounts": [
     "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
     "source=ghostmind-mcps-history,target=/commandhistory,type=volume",
-    "source=${env:HOME}${env:USERPROFILE}/projects/container/mcps,target=/Users/francoisseguin/projects/container/mcps,type=bind"
+    "source=${env:HOME}${env:USERPROFILE}/projects/container/mcps,target=/Users/francoisseguin/projects/container/mcps,type=bind",
+    "source=${env:HOME}${env:USERPROFILE}/.cursor/mcp.json,target=/home/vscode/.cursor/mcp.json,type=bind"
   ],
   "runArgs": [
     "--cap-add=CAP_IPC_LOCK",

@@ -1,30 +1,13 @@
 // Simple MCP Server with Bearer Token Authentication
 // This is a basic implementation that handles MCP protocol manually
 
-import { tools, toolExecutors, parseGitHubRepoPath } from './tools/github.ts';
-
-// Hardcoded GitHub configurations
-const configList = [
-  {
-    name: 'gitignore',
-    description: 'Update .gitignore files',
-    github_repo_path: 'ghostmind-dev/config/config/git',
-    github_token: Deno.env.get('GITHUB_TOKEN') || '',
-  },
-  {
-    name: 'settings',
-    description: 'Update global settings',
-    github_repo_path: 'ghostmind-dev/features/features/src/settings',
-    github_token: Deno.env.get('GITHUB_TOKEN') || '',
-  },
-];
-
-interface ConfigItem {
-  name: string;
-  description: string;
-  github_repo_path: string;
-  github_token: string;
-}
+import {
+  tools,
+  toolExecutors,
+  getAllConfigurations,
+  getConfiguration,
+  configToGitHubCredentials,
+} from './tools/github.ts';
 
 interface MCPRequest {
   jsonrpc: '2.0';
@@ -62,37 +45,6 @@ function authenticateRequest(req: Request): boolean {
   return token === serverToken;
 }
 
-// Get GitHub credentials from config name
-function getGitHubConfig(configName: string): ConfigItem | null {
-  const config = configList.find((c) => c.name === configName);
-  if (!config) {
-    return null;
-  }
-
-  if (!config.github_token) {
-    console.error(`GitHub token not found for config: ${configName}`);
-    return null;
-  }
-
-  return config;
-}
-
-// Convert config to GitHub credentials format
-function configToGitHubCredentials(config: ConfigItem): any {
-  const parsed = parseGitHubRepoPath(config.github_repo_path);
-  if (!parsed) {
-    throw new Error(`Invalid GitHub repo path: ${config.github_repo_path}`);
-  }
-
-  return {
-    token: config.github_token,
-    owner: parsed.owner,
-    repo: parsed.repo,
-    folder: parsed.folder,
-    description: config.description,
-  };
-}
-
 // Get all available tools (use static tools from github.ts)
 function getAllAvailableTools(): any[] {
   return tools;
@@ -120,7 +72,7 @@ async function handleMCPRequest(
             name: 'global-config-mcp',
             version: '1.0.0',
             description:
-              'MCP server for managing global configurations in remote GitHub repositories',
+              'MCP server for managing global configurations in remote repositories',
           },
         },
       };
@@ -180,26 +132,28 @@ async function handleMCPRequest(
       // For tools that require config_name
       const configName = toolArgs?.config_name;
       if (!configName) {
+        const availableConfigs = getAllConfigurations();
         return {
           jsonrpc: '2.0',
           id: request.id,
           error: {
             code: -32602,
-            message: `Missing required parameter: config_name. Available configs: ${configList
+            message: `Missing required parameter: config_name. Available configs: ${availableConfigs
               .map((c) => c.name)
               .join(', ')}`,
           },
         };
       }
 
-      const config = getGitHubConfig(configName);
+      const config = getConfiguration(configName);
       if (!config) {
+        const availableConfigs = getAllConfigurations();
         return {
           jsonrpc: '2.0',
           id: request.id,
           error: {
             code: -32602,
-            message: `Configuration not found: ${configName}. Available configs: ${configList
+            message: `Configuration not found: ${configName}. Available configs: ${availableConfigs
               .map((c) => c.name)
               .join(', ')}`,
           },
@@ -207,8 +161,8 @@ async function handleMCPRequest(
       }
 
       try {
-        const githubCredentials = configToGitHubCredentials(config);
-        const result = await executor(toolArgs, githubCredentials);
+        const credentials = configToGitHubCredentials(config);
+        const result = await executor(toolArgs, credentials);
         return {
           jsonrpc: '2.0',
           id: request.id,
@@ -415,9 +369,10 @@ Deno.serve(
 );
 
 // Log server startup information
-console.log('🚀 Global Config MCP starting...');
-console.log('   Available configurations:');
-configList.forEach((config) => {
+console.log('🚀 Global Config MCP Server starting...');
+console.log('   Available configurations from catalog:');
+const availableConfigs = getAllConfigurations();
+availableConfigs.forEach((config) => {
   console.log(
     `   - ${config.name}: ${config.description} (${config.github_repo_path})`
   );
@@ -426,6 +381,7 @@ console.log('   Required environment variables:');
 console.log('   - SERVER_TOKEN: Bearer token for MCP server authentication');
 console.log('   - GITHUB_TOKEN: GitHub Personal Access Token');
 console.log(`   - PORT: Server port (default: 3008)`);
+console.log('   Configuration catalog loaded from: confg/catalog.ts');
 console.log(
   `🌐 Server will be available at: http://localhost:${
     Number(Deno.env.get('PORT')) || 3008
