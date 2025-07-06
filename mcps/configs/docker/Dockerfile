@@ -10,7 +10,7 @@ COPY deno.json deno.lock ./
 # Copy the application code
 COPY server.ts ./
 COPY tools/ ./tools/
-
+COPY config/ ./config/
 
 # Cache the main server file and its dependencies
 RUN deno cache server.ts

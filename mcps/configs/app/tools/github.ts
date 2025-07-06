@@ -1,6 +1,6 @@
 // Remote Repository Tools - contains all tools for interacting with the remote GitHub repository via API calls
 
-import { catalog } from '../confg/catalog.ts';
+import { catalog } from '../config/catalog.ts';
 
 export interface Tool {
   name: string;
