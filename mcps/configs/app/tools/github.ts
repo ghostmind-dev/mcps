@@ -1,4 +1,7 @@
 // Remote Repository Tools - contains all tools for interacting with the remote GitHub repository via API calls
+
+import { catalog } from '../confg/catalog.ts';
+
 export interface Tool {
   name: string;
   description: string;
@@ -30,19 +33,55 @@ export interface ConfigInfo {
   description?: string;
 }
 
-// Available configurations - this will be used by the get_info function
-const AVAILABLE_CONFIGS: ConfigInfo[] = [
-  {
-    name: 'gitignore',
-    url: 'https://github.com/your-org/global-configs/tree/main/gitignore',
-    description: 'Global .gitignore configurations for different project types',
-  },
-  {
-    name: 'settings',
-    url: 'https://github.com/your-org/global-configs/tree/main/settings',
-    description: 'Global settings and configuration files',
-  },
-];
+// Export function to get all configurations
+export function getAllConfigurations() {
+  return catalog;
+}
+
+// Export function to get a specific configuration
+export function getConfiguration(configName: string) {
+  const config = catalog.find((c) => c.name === configName);
+  if (!config) {
+    return null;
+  }
+
+  if (!config.github_token) {
+    console.error(`GitHub token not found for config: ${configName}`);
+    return null;
+  }
+
+  return config;
+}
+
+// Export function to convert config to GitHub credentials format
+export function configToGitHubCredentials(config: any): GitHubCredentials {
+  const parsed = parseGitHubRepoPath(config.github_repo_path);
+  if (!parsed) {
+    throw new Error(`Invalid GitHub repo path: ${config.github_repo_path}`);
+  }
+
+  return {
+    token: config.github_token,
+    owner: parsed.owner,
+    repo: parsed.repo,
+    folder: parsed.folder,
+    description: config.description,
+  };
+}
+
+// Helper function to convert catalog config to ConfigInfo format
+function catalogToConfigInfo(catalogConfig: any): ConfigInfo {
+  // Extract owner, repo, and folder from github_repo_path
+  const parsed = parseGitHubRepoPath(catalogConfig.github_repo_path);
+  const baseUrl = `https://github.com/${parsed.owner}/${parsed.repo}`;
+  const url = parsed.folder ? `${baseUrl}/tree/main/${parsed.folder}` : baseUrl;
+
+  return {
+    name: catalogConfig.name,
+    url: url,
+    description: catalogConfig.description,
+  };
+}
 
 // Security function to validate path is within allowed folder
 function validatePath(path: string, allowedFolder?: string): boolean {
@@ -466,21 +505,21 @@ function getGitHubConfig(configName: string, credentials?: GitHubCredentials) {
     return credentials;
   }
 
-  // Find the config in the available configs
-  const config = AVAILABLE_CONFIGS.find((c) => c.name === configName);
+  // Find the config in the catalog
+  const config = catalog.find((c) => c.name === configName);
   if (!config) {
     throw new Error(
-      `Unknown configuration: ${configName}. Available configurations: ${AVAILABLE_CONFIGS.map(
-        (c) => c.name
-      ).join(', ')}`
+      `Unknown configuration: ${configName}. Available configurations: ${catalog
+        .map((c) => c.name)
+        .join(', ')}`
     );
   }
 
-  // Parse the GitHub URL to get owner, repo, and folder
-  const { owner, repo, folder } = parseGitHubRepoPath(config.url);
+  // Parse the GitHub repo path directly from the catalog
+  const { owner, repo, folder } = parseGitHubRepoPath(config.github_repo_path);
 
-  // Get GitHub token from environment
-  const token = Deno.env.get('GITHUB_TOKEN');
+  // Get GitHub token from environment or use the one from config
+  const token = config.github_token || Deno.env.get('GITHUB_TOKEN');
   if (!token) {
     throw new Error(
       'GitHub token is required - set GITHUB_TOKEN environment variable'
@@ -525,12 +564,14 @@ export const toolExecutors: Record<
     console.log('📋 Listing all available configurations...');
 
     // Return list of all available configurations
-    const configList = AVAILABLE_CONFIGS.map(
-      (config) =>
-        `📋 **${config.name}**\n   URL: ${config.url}\n   Description: ${
-          config.description || 'No description available'
-        }`
-    ).join('\n\n');
+    const configList = catalog
+      .map((config) => {
+        const configInfo = catalogToConfigInfo(config);
+        return `📋 **${config.name}**\n   URL: ${
+          configInfo.url
+        }\n   Description: ${config.description || 'No description available'}`;
+      })
+      .join('\n\n');
 
     return {
       content: [
@@ -553,12 +594,16 @@ export const toolExecutors: Record<
 
     if (!args?.config_name) {
       // Return list of all available configurations
-      const configList = AVAILABLE_CONFIGS.map(
-        (config) =>
-          `📋 **${config.name}**\n   URL: ${config.url}\n   Description: ${
+      const configList = catalog
+        .map((config) => {
+          const configInfo = catalogToConfigInfo(config);
+          return `📋 **${config.name}**\n   URL: ${
+            configInfo.url
+          }\n   Description: ${
             config.description || 'No description available'
-          }`
-      ).join('\n\n');
+          }`;
+        })
+        .join('\n\n');
 
       return {
         content: [
@@ -571,7 +616,7 @@ export const toolExecutors: Record<
     }
 
     // Return specific configuration info
-    const config = AVAILABLE_CONFIGS.find((c) => c.name === args.config_name);
+    const config = catalog.find((c) => c.name === args.config_name);
     if (!config) {
       return {
         content: [
@@ -579,20 +624,21 @@ export const toolExecutors: Record<
             type: 'text',
             text: `❌ Configuration '${
               args.config_name
-            }' not found.\n\nAvailable configurations: ${AVAILABLE_CONFIGS.map(
-              (c) => c.name
-            ).join(', ')}`,
+            }' not found.\n\nAvailable configurations: ${catalog
+              .map((c) => c.name)
+              .join(', ')}`,
           },
         ],
       };
     }
 
+    const configInfo = catalogToConfigInfo(config);
     return {
       content: [
         {
           type: 'text',
           text: `📋 Configuration: **${config.name}**\n🔗 URL: ${
-            config.url
+            configInfo.url
           }\n📝 Description: ${
             config.description || 'No description available'
           }`,

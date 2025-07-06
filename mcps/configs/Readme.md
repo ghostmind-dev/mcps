@@ -43,12 +43,16 @@ export PORT=3008
 deno run --allow-net --allow-env server.ts
 ```
 
-## 🔧 Hardcoded Configuration List
+## 🔧 Configuration Management
 
-The server comes with predefined configurations hardcoded in `server.ts`:
+The server uses a modular tool-based architecture with configurations managed through a catalog system:
+
+### Configuration Catalog
+
+The configurations are now managed through a separate catalog file (`confg/catalog.ts`):
 
 ```typescript
-const configList = [
+export const catalog = [
   {
     name: 'gitignore',
     description: 'Update .gitignore files',
@@ -58,11 +62,36 @@ const configList = [
   {
     name: 'settings',
     description: 'Update global settings',
-    github_repo_path: 'ghostmind-dev/config/features/src/settings',
+    github_repo_path: 'ghostmind-dev/features/features/src/settings',
+    github_token: Deno.env.get('GITHUB_TOKEN') || '',
+  },
+  {
+    name: 'devcontainer',
+    description: 'Update devcontainer template configuration',
+    github_repo_path: 'ghostmind-dev/config/config/devcontainer/',
+    github_token: Deno.env.get('GITHUB_TOKEN') || '',
+  },
+  {
+    name: 'meta',
+    description: 'json schema for meta.json',
+    github_repo_path: 'ghostmind-dev/config/config/meta',
+    github_token: Deno.env.get('GITHUB_TOKEN') || '',
+  },
+  {
+    name: 'vscode_settings_dynamic',
+    description: 'vscode settings for dynamic properties',
+    github_repo_path: 'ghostmind-dev/config/config/vscode',
     github_token: Deno.env.get('GITHUB_TOKEN') || '',
   },
 ];
 ```
+
+### Server Architecture
+
+- **Tool-Agnostic Server**: The main server (`server.ts`) handles MCP protocol communication without being tied to specific tools
+- **Modular Tools**: Each tool (like `github.ts`) imports and uses configurations from the catalog
+- **Centralized Configuration**: All configurations are managed in a single catalog file for easy maintenance
+- **Dynamic Tool Loading**: Tools import configurations from the catalog at runtime
 
 ## 🛠️ Available Tools
 
@@ -95,25 +124,25 @@ For each configuration, the server automatically generates GitHub tools with pre
 
 ### 1. **MCP Protocol Implementation**
 
-- Implements MCP (Model Context Protocol) specification for GitHub interactions
+- Implements MCP (Model Context Protocol) specification for tool interactions
 - Handles JSON-RPC 2.0 requests over HTTP
-- Provides standardized endpoints for GitHub tool discovery and execution
-- Automatic tool generation based on hardcoded configurations
+- Provides standardized endpoints for tool discovery and execution
+- Tool-agnostic server that can work with any tool implementation
 
 ### 2. **Authentication & Security**
 
 - **Server Authentication**: Uses Bearer token authentication for MCP server access
-- **GitHub Authentication**: Uses GitHub Personal Access Tokens from environment variables
-- **Configuration Security**: All GitHub operations are restricted to predefined repositories
+- **Tool-Specific Authentication**: Each tool manages its own authentication (e.g., GitHub tokens)
+- **Configuration Security**: All operations are restricted to predefined tool configurations
 - **Path Validation**: Prevents access to files outside the specified folders
 - Validates tokens against the `SERVER_TOKEN` environment variable
 
-### 3. **Configuration Management**
+### 3. **Modular Tool Architecture**
 
-- Hardcoded configuration list in server code
-- Each configuration specifies GitHub repository path and description
-- Automatic tool generation with unique prefixes
-- Folder-aware file operations based on repository paths
+- **Tool Independence**: Each tool (like `github.ts`) contains its own configurations and logic
+- **Dynamic Loading**: Tools are imported and their configurations are loaded at runtime
+- **Extensible**: New tools can be added without modifying the server code
+- **Consistent Interface**: All tools follow the same interface pattern
 
 ## API Testing
 
@@ -234,20 +263,22 @@ The server implements comprehensive error handling for:
 
 To add a new configuration:
 
-1. Add the configuration to the `configList` array in `server.ts`:
+1. Add the configuration to the `catalog` array in `confg/catalog.ts`:
 
    ```typescript
    {
-     "name": "new_config",
-     "description": "Description of the new configuration",
-     "github_repo_path": "owner/repo/path/to/folder",
-     "github_token": Deno.env.get('GITHUB_TOKEN') || ''
+     name: "new_config",
+     description: "Description of the new configuration",
+     github_repo_path: "owner/repo/path/to/folder",
+     github_token: Deno.env.get('GITHUB_TOKEN') || ''
    }
    ```
 
-2. Restart the server to load the new configuration
+2. The configuration will be automatically available to all tools that import the catalog
 
-3. The server will automatically generate tools with the prefix `mcp_update_global_new_config_*`
+3. Restart the server to load the new configuration
+
+4. The server will automatically make the new configuration available through all GitHub tools
 
 ## Contributing
 
