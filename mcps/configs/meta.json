@@ -28,7 +28,7 @@
   },
   "mcp": {
     "update_global_configs": {
-      "url": "http://localhost:3008/mcp",
+      "url": "${SERVER_URL}/mcp",
       "headers": {
         "Authorization": "Bearer ${SERVER_TOKEN}"
       }

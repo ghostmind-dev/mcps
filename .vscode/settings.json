@@ -6,5 +6,6 @@
   "material-icon-theme.files.associations": {},
   "workbench.colorCustomizations": {
     "gitDecoration.ignoredResourceForeground": "#482c7d"
-  }
+  },
+  "deno.enable": true
 }
