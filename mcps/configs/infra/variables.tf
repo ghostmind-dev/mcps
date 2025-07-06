@@ -1,21 +1,16 @@
 # variables.tf
 
-variable "PROJECT" {
-  type      = string
-  sensitive = true
-}
-
-variable "APP" {
-  type      = string
-  sensitive = true
-}
-
 variable "PORT" {
   type      = string
   sensitive = true
 }
 
 variable "SERVER_TOKEN" {
+  type      = string
+  sensitive = true
+}
+
+variable "GITHUB_TOKEN" {
   type      = string
   sensitive = true
 }
@@ -35,6 +30,16 @@ variable "IMAGE_DIGEST_DEFAULT" {
   sensitive = true
 }
 
+variable "PROJECT" {
+  type      = string
+  sensitive = true
+}
+
+variable "APP" {
+  type      = string
+  sensitive = true
+}
+
 variable "GCP_PROJECT_ID" {
   type      = string
   sensitive = true
@@ -44,16 +49,12 @@ variable "GCP_PROJECT_ID" {
 locals {
   env_vars = [
     {
-      name  = "PROJECT"
-      value = var.PROJECT
-    },
-    {
-      name  = "APP"
-      value = var.APP
-    },
-    {
       name  = "SERVER_TOKEN"
       value = var.SERVER_TOKEN
+    },
+    {
+      name  = "GITHUB_TOKEN"
+      value = var.GITHUB_TOKEN
     },
     {
       name  = "ENVIRONMENT"
@@ -68,10 +69,18 @@ locals {
       value = var.IMAGE_DIGEST_DEFAULT
     },
     {
+      name  = "PROJECT"
+      value = var.PROJECT
+    },
+    {
+      name  = "APP"
+      value = var.APP
+    },
+    {
       name  = "GCP_PROJECT_ID"
       value = var.GCP_PROJECT_ID
     }
   ]
 }
 
-
+  

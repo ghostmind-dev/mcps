@@ -1,18 +1,30 @@
 // Simple MCP Server with Bearer Token Authentication
 // This is a basic implementation that handles MCP protocol manually
 
-import {
-  tools as githubTools,
-  toolExecutors as githubExecutors,
-} from './tools/github.ts';
+import { tools, toolExecutors, parseGitHubRepoPath } from './tools/github.ts';
 
-// Combine all tools
-const tools = [...githubTools];
+// Hardcoded GitHub configurations
+const configList = [
+  {
+    name: 'gitignore',
+    description: 'Update .gitignore files',
+    github_repo_path: 'ghostmind-dev/config/config/git',
+    github_token: Deno.env.get('GITHUB_TOKEN') || '',
+  },
+  {
+    name: 'settings',
+    description: 'Update global settings',
+    github_repo_path: 'ghostmind-dev/features/features/src/settings',
+    github_token: Deno.env.get('GITHUB_TOKEN') || '',
+  },
+];
 
-// Combine all tool executors
-const toolExecutors = {
-  ...githubExecutors,
-};
+interface ConfigItem {
+  name: string;
+  description: string;
+  github_repo_path: string;
+  github_token: string;
+}
 
 interface MCPRequest {
   jsonrpc: '2.0';
@@ -32,85 +44,65 @@ interface MCPResponse {
   };
 }
 
-// Get the expected server token from environment
-const SERVER_TOKEN = Deno.env.get('SERVER_TOKEN');
-const GITHUB_TOKEN = Deno.env.get('GITHUB_TOKEN');
-const GITHUB_OWNER = Deno.env.get('GITHUB_OWNER');
-const GITHUB_REPO = Deno.env.get('GITHUB_REPO');
-
-if (!SERVER_TOKEN) {
-  console.error('❌ SERVER_TOKEN environment variable is required but not set');
-  console.error('   Please set SERVER_TOKEN before starting the server');
-  console.error('   Example: export SERVER_TOKEN=your-secret-token');
-  Deno.exit(1);
-}
-
-if (!GITHUB_TOKEN) {
-  console.error('❌ GITHUB_TOKEN environment variable is required but not set');
-  console.error(
-    '   Please set GITHUB_TOKEN with your GitHub Personal Access Token'
-  );
-  console.error('   Example: export GITHUB_TOKEN=ghp_your_github_token_here');
-  console.error(
-    '   Required scopes: repo (for private repos) or public_repo (for public repos)'
-  );
-  Deno.exit(1);
-}
-
-if (!GITHUB_OWNER) {
-  console.error('❌ GITHUB_OWNER environment variable is required but not set');
-  console.error(
-    '   Please set GITHUB_OWNER with your GitHub username or organization'
-  );
-  console.error('   Example: export GITHUB_OWNER=your-org-name');
-  Deno.exit(1);
-}
-
-if (!GITHUB_REPO) {
-  console.error('❌ GITHUB_REPO environment variable is required but not set');
-  console.error('   Please set GITHUB_REPO with your repository name');
-  console.error('   Example: export GITHUB_REPO=your-repo-name');
-  Deno.exit(1);
-}
-
-// Token authentication middleware following MCP authorization spec
+// Authentication function
 function authenticateRequest(req: Request): boolean {
   const authHeader = req.headers.get('Authorization');
-
-  console.log('=== AUTHENTICATION DEBUG ===');
-  console.log('Received Authorization header:', authHeader);
-  console.log('============================');
-
-  if (!authHeader) {
-    console.log('❌ Missing Authorization header');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return false;
   }
 
-  // Check for Bearer token format as per MCP spec
-  if (!authHeader.startsWith('Bearer ')) {
-    console.log('❌ Authorization header must use Bearer token format');
-    console.log('   Expected format: Bearer <token>');
-    console.log('   Received:', authHeader);
+  const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+  const serverToken = Deno.env.get('SERVER_TOKEN');
+
+  if (!serverToken) {
+    console.error('SERVER_TOKEN environment variable is not set');
     return false;
   }
 
-  // Extract the token from "Bearer <token>"
-  const token = authHeader.substring(7); // Remove "Bearer " prefix
+  return token === serverToken;
+}
 
-  // Validate against the expected server token
-  if (token !== SERVER_TOKEN) {
-    console.log('❌ Invalid bearer token provided');
-    console.log('   Expected token:', SERVER_TOKEN);
-    console.log('   Received token:', token);
-    return false;
+// Get GitHub credentials from config name
+function getGitHubConfig(configName: string): ConfigItem | null {
+  const config = configList.find((c) => c.name === configName);
+  if (!config) {
+    return null;
   }
 
-  console.log('✅ Bearer token authentication successful');
-  return true;
+  if (!config.github_token) {
+    console.error(`GitHub token not found for config: ${configName}`);
+    return null;
+  }
+
+  return config;
+}
+
+// Convert config to GitHub credentials format
+function configToGitHubCredentials(config: ConfigItem): any {
+  const parsed = parseGitHubRepoPath(config.github_repo_path);
+  if (!parsed) {
+    throw new Error(`Invalid GitHub repo path: ${config.github_repo_path}`);
+  }
+
+  return {
+    token: config.github_token,
+    owner: parsed.owner,
+    repo: parsed.repo,
+    folder: parsed.folder,
+    description: config.description,
+  };
+}
+
+// Get all available tools (use static tools from github.ts)
+function getAllAvailableTools(): any[] {
+  return tools;
 }
 
 // Handle MCP requests
-async function handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
+async function handleMCPRequest(
+  request: MCPRequest,
+  req: Request
+): Promise<MCPResponse> {
   console.log('Handling MCP request:', request.method);
 
   switch (request.method) {
@@ -125,32 +117,46 @@ async function handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
             resources: {},
           },
           serverInfo: {
-            name: 'ghostmind-config-mcp-server',
+            name: 'global-config-mcp',
             version: '1.0.0',
             description:
-              'MCP server for managing ghostmind base configuration repository',
+              'MCP server for managing global configurations in remote GitHub repositories',
           },
         },
       };
 
-    case 'tools/list':
+    case 'tools/list': {
+      const allTools = getAllAvailableTools();
       return {
         jsonrpc: '2.0',
         id: request.id,
         result: {
-          tools: tools,
+          tools: allTools,
         },
       };
+    }
 
     case 'tools/call': {
       const toolName = request.params?.name;
       const toolArgs = request.params?.arguments;
 
-      // Check if tool exists and execute it
+      // Check if the tool exists in our static toolExecutors
       const executor = toolExecutors[toolName];
-      if (executor) {
+      if (!executor) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32601,
+            message: `Unknown tool: ${toolName}`,
+          },
+        };
+      }
+
+      // For tools that don't require config_name (like global_config_list)
+      if (toolName === 'global_config_list') {
         try {
-          const result = await executor(toolArgs);
+          const result = await executor(toolArgs || {});
           return {
             jsonrpc: '2.0',
             id: request.id,
@@ -171,14 +177,54 @@ async function handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
         }
       }
 
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32601,
-          message: `Unknown tool: ${toolName}`,
-        },
-      };
+      // For tools that require config_name
+      const configName = toolArgs?.config_name;
+      if (!configName) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32602,
+            message: `Missing required parameter: config_name. Available configs: ${configList
+              .map((c) => c.name)
+              .join(', ')}`,
+          },
+        };
+      }
+
+      const config = getGitHubConfig(configName);
+      if (!config) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32602,
+            message: `Configuration not found: ${configName}. Available configs: ${configList
+              .map((c) => c.name)
+              .join(', ')}`,
+          },
+        };
+      }
+
+      try {
+        const githubCredentials = configToGitHubCredentials(config);
+        const result = await executor(toolArgs, githubCredentials);
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          result: result,
+        };
+      } catch (error) {
+        return {
+          jsonrpc: '2.0',
+          id: request.id,
+          error: {
+            code: -32602,
+            message:
+              error instanceof Error ? error.message : 'Tool execution failed',
+          },
+        };
+      }
     }
 
     case 'resources/list':
@@ -242,7 +288,7 @@ async function handleMCPRequest(request: MCPRequest): Promise<MCPResponse> {
 // Start the HTTP server
 Deno.serve(
   {
-    port: Number(Deno.env.get('PORT')),
+    port: Number(Deno.env.get('PORT')) || 3008,
     hostname: '0.0.0.0',
   },
   async (req: Request) => {
@@ -326,7 +372,7 @@ Deno.serve(
         console.log('Request body:', body);
 
         const mcpRequest: MCPRequest = JSON.parse(body);
-        const mcpResponse = await handleMCPRequest(mcpRequest);
+        const mcpResponse = await handleMCPRequest(mcpRequest, req);
 
         return new Response(JSON.stringify(mcpResponse), {
           status: 200,
@@ -368,14 +414,20 @@ Deno.serve(
   }
 );
 
-console.log('🚀 GitHub MCP Server starting on http://localhost:3008/mcp');
-console.log('🔐 Server token loaded from SERVER_TOKEN environment variable');
-console.log('🔑 GitHub token loaded from GITHUB_TOKEN environment variable');
-console.log(`📁 Configured repository: ${GITHUB_OWNER}/${GITHUB_REPO}`);
+// Log server startup information
+console.log('🚀 Global Config MCP starting...');
+console.log('   Available configurations:');
+configList.forEach((config) => {
+  console.log(
+    `   - ${config.name}: ${config.description} (${config.github_repo_path})`
+  );
+});
+console.log('   Required environment variables:');
+console.log('   - SERVER_TOKEN: Bearer token for MCP server authentication');
+console.log('   - GITHUB_TOKEN: GitHub Personal Access Token');
+console.log(`   - PORT: Server port (default: 3008)`);
 console.log(
-  '📝 Use Authorization: Bearer <your-token> header for authentication'
+  `🌐 Server will be available at: http://localhost:${
+    Number(Deno.env.get('PORT')) || 3008
+  }/mcp`
 );
-console.log(
-  `🔧 Available GitHub tools: ${tools.map((tool) => tool.name).join(', ')}`
-);
-console.log('📁 Available resources: test://example');

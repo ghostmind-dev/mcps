@@ -1,4 +1,4 @@
-// GitHub tools - contains all GitHub repository interaction tools
+// Remote Repository Tools - contains all tools for interacting with the remote GitHub repository via API calls
 export interface Tool {
   name: string;
   description: string;
@@ -16,51 +16,177 @@ export interface ToolCallResult {
   }>;
 }
 
-// GitHub repository interaction tools for configuration management
+export interface GitHubCredentials {
+  token: string;
+  owner: string;
+  repo: string;
+  folder?: string;
+  description?: string;
+}
+
+export interface ConfigInfo {
+  name: string;
+  url: string;
+  description?: string;
+}
+
+// Available configurations - this will be used by the get_info function
+const AVAILABLE_CONFIGS: ConfigInfo[] = [
+  {
+    name: 'gitignore',
+    url: 'https://github.com/your-org/global-configs/tree/main/gitignore',
+    description: 'Global .gitignore configurations for different project types',
+  },
+  {
+    name: 'settings',
+    url: 'https://github.com/your-org/global-configs/tree/main/settings',
+    description: 'Global settings and configuration files',
+  },
+];
+
+// Security function to validate path is within allowed folder
+function validatePath(path: string, allowedFolder?: string): boolean {
+  if (!allowedFolder) {
+    return true; // No folder restriction
+  }
+
+  // Normalize paths
+  const normalizedPath = path.replace(/^\/+/, '').replace(/\/+$/, '');
+  const normalizedFolder = allowedFolder
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+
+  // Check if path is within the allowed folder
+  return (
+    normalizedPath.startsWith(normalizedFolder + '/') ||
+    normalizedPath === normalizedFolder
+  );
+}
+
+// Security function to enforce folder restrictions
+function enforceFolderSecurity(path: string, allowedFolder?: string): string {
+  if (!allowedFolder) {
+    return path; // No folder restriction
+  }
+
+  if (!validatePath(path, allowedFolder)) {
+    throw new Error(
+      `Access denied: Path "${path}" is outside the allowed folder "${allowedFolder}"`
+    );
+  }
+
+  return path;
+}
+
+// Helper function to ensure path is within allowed folder
+function ensurePathInFolder(path: string, allowedFolder?: string): string {
+  if (!allowedFolder) {
+    return path;
+  }
+
+  const normalizedPath = path.replace(/^\/+/, '');
+  const normalizedFolder = allowedFolder
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '');
+
+  // If path doesn't start with folder, prepend it
+  if (
+    !normalizedPath.startsWith(normalizedFolder + '/') &&
+    normalizedPath !== normalizedFolder
+  ) {
+    return `${normalizedFolder}/${normalizedPath}`;
+  }
+
+  return normalizedPath;
+}
+
+// Static tools - no dynamic generation
 export const tools: Tool[] = [
   {
-    name: 'config_list_repo_contents',
+    name: 'global_config_list',
     description:
-      'List contents and folders in a GitHub repository - use when you need to explore or browse the repository structure. Keywords: github repo, repository contents, browse repo, list files',
+      'List all available configurations without requiring any parameters - use this when you need to see what configurations are available',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'global_config_get_info',
+    description:
+      'Get detailed information about a specific configuration, or list all available configurations when no config_name is provided',
     inputSchema: {
       type: 'object',
       properties: {
-        path: {
+        config_name: {
           type: 'string',
           description:
-            'Path within the repository (optional, defaults to root)',
-          default: '',
+            'Name of the configuration to get information about (optional - if not provided, returns list of all configs)',
         },
       },
       required: [],
     },
   },
   {
-    name: 'config_check_file_exists',
+    name: 'global_config_list_contents',
     description:
-      'Check if a specific file exists in the GitHub repository. Keywords: github file, check file exists, file exists',
+      'List contents and folders in the remote GitHub repository via API call - use when you need to explore or browse the remote repository structure on GitHub. This tool makes GitHub API calls to fetch repository contents, NOT local file system access. Operations are restricted to the specified folder if provided. Keywords: remote repo, github api, repository contents, browse repo, list files  Use the config_name parameter to specify which configuration to target (gitignore, settings).',
     inputSchema: {
       type: 'object',
       properties: {
-        file_path: {
+        config_name: {
           type: 'string',
           description:
-            'Path to the file to check in the repository (e.g., "configs/my-config.json")',
+            'Name of the configuration to target (gitignore, settings)',
+        },
+        path: {
+          type: 'string',
+          description:
+            'Path within the remote GitHub repository (optional, defaults to root or restricted folder)',
+          default: '',
         },
       },
-      required: ['file_path'],
+      required: ['config_name'],
     },
   },
   {
-    name: 'config_get_file_content',
+    name: 'global_config_check_file_exists',
     description:
-      'Get the content of a file from the GitHub repository. Keywords: github file, read file, view file, file content',
+      'Check if a specific file exists in the remote GitHub repository via API call - NOT in local file system. This tool makes GitHub API calls to check file existence on GitHub. Operations are restricted to the specified folder if provided. Keywords: remote repo file, github api, check file exists, file exists  Use the config_name parameter to specify which configuration to target (gitignore, settings).',
     inputSchema: {
       type: 'object',
       properties: {
+        config_name: {
+          type: 'string',
+          description:
+            'Name of the configuration to target (gitignore, settings)',
+        },
         file_path: {
           type: 'string',
-          description: 'Path to the file to retrieve from the repository',
+          description:
+            'Path to the file to check in the remote GitHub repository (e.g., "configs/my-config.json"). Must be within the allowed folder if specified.',
+        },
+      },
+      required: ['config_name', 'file_path'],
+    },
+  },
+  {
+    name: 'global_config_get_file_content',
+    description:
+      'Get the content of a file from the remote GitHub repository via API call - NOT from local file system. This tool makes GitHub API calls to fetch file content from GitHub. Operations are restricted to the specified folder if provided. Keywords: remote repo file, github api, read file, view file, file content  Use the config_name parameter to specify which configuration to target (gitignore, settings).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        config_name: {
+          type: 'string',
+          description:
+            'Name of the configuration to target (gitignore, settings)',
+        },
+        file_path: {
+          type: 'string',
+          description:
+            'Path to the file to retrieve from the remote GitHub repository. Must be within the allowed folder if specified.',
         },
         branch: {
           type: 'string',
@@ -68,20 +194,25 @@ export const tools: Tool[] = [
           default: 'main',
         },
       },
-      required: ['file_path'],
+      required: ['config_name', 'file_path'],
     },
   },
   {
-    name: 'config_add_file',
+    name: 'global_config_add_file',
     description:
-      'Add or update a file in the GitHub repository with automatic branch creation and pull request - use when user wants to modify or add files to the repository. Keywords: github file, add file, update file, modify file, create file, new config, add config, config file, configuration, settings, new configuration, save config, store config, manage config',
+      'Add or update a file in the remote GitHub repository via API calls with automatic branch creation and pull request. This tool makes GitHub API calls to create branches and pull requests - NOT direct file editing in local workspace. Operations are restricted to the specified folder if provided. Use when you want to propose changes to the remote GitHub repository. Keywords: remote repo file, github api, add file, update file, modify file, create file, pull request, new config, add config, config file, configuration, settings, new configuration, save config, store config, manage config  Use the config_name parameter to specify which configuration to target (gitignore, settings).',
     inputSchema: {
       type: 'object',
       properties: {
+        config_name: {
+          type: 'string',
+          description:
+            'Name of the configuration to target (gitignore, settings)',
+        },
         file_path: {
           type: 'string',
           description:
-            'Path where to add the file in the repository (e.g., "configs/extensions/my-extension.json")',
+            'Path where to add the file in the remote GitHub repository (e.g., "configs/extensions/my-extension.json"). Will be automatically placed within the allowed folder if specified.',
         },
         file_content: {
           type: 'string',
@@ -107,16 +238,27 @@ export const tools: Tool[] = [
           default: '',
         },
       },
-      required: ['file_path', 'file_content', 'commit_message', 'pr_title'],
+      required: [
+        'config_name',
+        'file_path',
+        'file_content',
+        'commit_message',
+        'pr_title',
+      ],
     },
   },
   {
-    name: 'config_smart_add_file',
+    name: 'global_config_smart_add_file',
     description:
-      'Intelligently add a file to the GitHub repository by analyzing repo structure and suggesting optimal placement - use when user wants to add a new file but is unsure about placement. Perfect for when users say "I have a new config", "add this configuration", "save this config", or "I want to add a new file". Keywords: github file, smart file placement, auto file placement, intelligent file placement, new config, add config, config file, configuration, settings, new configuration, save config, store config, manage config, I have a config, add this config, new file, where should this go',
+      'Intelligently add a file to the remote GitHub repository via API calls by analyzing the remote repo structure and suggesting optimal placement. This tool makes GitHub API calls to create branches and pull requests - NOT direct file editing in local workspace. Operations are restricted to the specified folder if provided. Use when you want to propose a new file to the remote GitHub repository but are unsure about placement. Perfect for when users say "I have a new config", "add this configuration", "save this config", or "I want to add a new file". Keywords: remote repo file, github api, smart file placement, auto file placement, intelligent file placement, pull request, new config, add config, config file, configuration, settings, new configuration, save config, store config, manage config, I have a config, add this config, new file, where should this go  Use the config_name parameter to specify which configuration to target (gitignore, settings).',
     inputSchema: {
       type: 'object',
       properties: {
+        config_name: {
+          type: 'string',
+          description:
+            'Name of the configuration to target (gitignore, settings)',
+        },
         file_name: {
           type: 'string',
           description:
@@ -143,7 +285,7 @@ export const tools: Tool[] = [
           default: '',
         },
       },
-      required: ['file_name', 'file_content'],
+      required: ['config_name', 'file_name', 'file_content'],
     },
   },
 ];
@@ -221,27 +363,131 @@ function generateBranchName(baseName: string): string {
   return `add-config-${sanitized}-${timestamp}`;
 }
 
-// Helper function to get environment variables with validation
-function getGitHubConfig() {
-  const token = Deno.env.get('GITHUB_TOKEN');
-  const owner = Deno.env.get('GITHUB_OWNER');
-  const repo = Deno.env.get('GITHUB_REPO');
+// Helper function to parse GitHub repository path from various formats
+export function parseGitHubRepoPath(repoPath: string): {
+  owner: string;
+  repo: string;
+  folder?: string;
+} {
+  if (!repoPath || typeof repoPath !== 'string') {
+    throw new Error('GitHub repo path is required and must be a string');
+  }
 
+  // Remove leading/trailing whitespace and slashes
+  let cleanPath = repoPath.trim().replace(/^\/+/, '').replace(/\/+$/, '');
+
+  // Remove protocol if present (https:// or http://)
+  if (cleanPath.startsWith('https://') || cleanPath.startsWith('http://')) {
+    cleanPath = cleanPath.replace(/^https?:\/\//, '');
+  }
+
+  // Remove github.com prefix if present
+  if (cleanPath.startsWith('github.com/')) {
+    cleanPath = cleanPath.substring('github.com/'.length);
+  }
+
+  // Remove .git suffix if present
+  if (cleanPath.endsWith('.git')) {
+    cleanPath = cleanPath.substring(0, cleanPath.length - 4);
+  }
+
+  let owner: string;
+  let repo: string;
+  let folder: string | undefined;
+
+  // Handle GitHub tree URLs like "owner/repo/tree/branch/folder/subfolder"
+  if (cleanPath.includes('/tree/')) {
+    const treeParts = cleanPath.split('/tree/');
+    if (treeParts.length !== 2) {
+      throw new Error(`Invalid GitHub tree URL format: ${repoPath}`);
+    }
+
+    const [repoPathPart, branchAndFolder] = treeParts;
+    const repoParts = repoPathPart.split('/');
+
+    if (repoParts.length < 2) {
+      throw new Error(`Invalid repo path in tree URL: ${repoPath}`);
+    }
+
+    owner = repoParts[0];
+    repo = repoParts[1];
+
+    // Extract folder path after branch name
+    const branchFolderParts = branchAndFolder.split('/');
+    if (branchFolderParts.length > 1) {
+      // Skip the branch name (first part) and join the rest as folder path
+      folder = branchFolderParts.slice(1).join('/');
+    }
+  } else {
+    // Handle simple paths like "owner/repo" or "owner/repo/folder/subfolder"
+    const parts = cleanPath.split('/');
+
+    if (parts.length < 2) {
+      throw new Error(
+        `Invalid repo path format: ${repoPath}. Expected format: owner/repo or owner/repo/folder`
+      );
+    }
+
+    owner = parts[0];
+    repo = parts[1];
+
+    // If there are more parts, they form the folder path
+    if (parts.length > 2) {
+      folder = parts.slice(2).join('/');
+    }
+  }
+
+  // Validate owner and repo are not empty
+  if (!owner || !repo) {
+    throw new Error(
+      `Invalid repo path: owner and repo cannot be empty. Got owner="${owner}", repo="${repo}"`
+    );
+  }
+
+  // Validate owner and repo contain only valid characters
+  const validRepoRegex = /^[a-zA-Z0-9._-]+$/;
+  if (!validRepoRegex.test(owner)) {
+    throw new Error(
+      `Invalid owner name: ${owner}. Must contain only alphanumeric characters, dots, underscores, and hyphens.`
+    );
+  }
+  if (!validRepoRegex.test(repo)) {
+    throw new Error(
+      `Invalid repo name: ${repo}. Must contain only alphanumeric characters, dots, underscores, and hyphens.`
+    );
+  }
+
+  return { owner, repo, folder };
+}
+
+// Helper function to get GitHub config for a specific configuration name
+function getGitHubConfig(configName: string, credentials?: GitHubCredentials) {
+  if (credentials) {
+    return credentials;
+  }
+
+  // Find the config in the available configs
+  const config = AVAILABLE_CONFIGS.find((c) => c.name === configName);
+  if (!config) {
+    throw new Error(
+      `Unknown configuration: ${configName}. Available configurations: ${AVAILABLE_CONFIGS.map(
+        (c) => c.name
+      ).join(', ')}`
+    );
+  }
+
+  // Parse the GitHub URL to get owner, repo, and folder
+  const { owner, repo, folder } = parseGitHubRepoPath(config.url);
+
+  // Get GitHub token from environment
+  const token = Deno.env.get('GITHUB_TOKEN');
   if (!token) {
     throw new Error(
-      'GITHUB_TOKEN environment variable is required but not set'
+      'GitHub token is required - set GITHUB_TOKEN environment variable'
     );
-  }
-  if (!owner) {
-    throw new Error(
-      'GITHUB_OWNER environment variable is required but not set'
-    );
-  }
-  if (!repo) {
-    throw new Error('GITHUB_REPO environment variable is required but not set');
   }
 
-  return { token, owner, repo };
+  return { token, owner, repo, folder, description: config.description };
 }
 
 // Helper function to format repository structure
@@ -267,26 +513,127 @@ function formatRepoStructure(contents: any[], path: string = ''): string {
   return structure;
 }
 
-// Tool executors
+// Static tool executors - no dynamic generation
 export const toolExecutors: Record<
   string,
-  (args: any) => Promise<ToolCallResult>
+  (args: any, credentials?: GitHubCredentials) => Promise<ToolCallResult>
 > = {
-  config_list_repo_contents: async (args: {
-    path?: string;
-  }): Promise<ToolCallResult> => {
+  global_config_list: async (
+    args: {},
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
+    console.log('📋 Listing all available configurations...');
+
+    // Return list of all available configurations
+    const configList = AVAILABLE_CONFIGS.map(
+      (config) =>
+        `📋 **${config.name}**\n   URL: ${config.url}\n   Description: ${
+          config.description || 'No description available'
+        }`
+    ).join('\n\n');
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📚 Available Configurations:\n\n${configList}`,
+        },
+      ],
+    };
+  },
+
+  global_config_get_info: async (
+    args: {
+      config_name?: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
+    console.log('ℹ️ Getting configuration info...');
+    console.log('Parameters:', { config_name: args?.config_name || 'all' });
+
+    if (!args?.config_name) {
+      // Return list of all available configurations
+      const configList = AVAILABLE_CONFIGS.map(
+        (config) =>
+          `📋 **${config.name}**\n   URL: ${config.url}\n   Description: ${
+            config.description || 'No description available'
+          }`
+      ).join('\n\n');
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `📚 Available Configurations:\n\n${configList}`,
+          },
+        ],
+      };
+    }
+
+    // Return specific configuration info
+    const config = AVAILABLE_CONFIGS.find((c) => c.name === args.config_name);
+    if (!config) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `❌ Configuration '${
+              args.config_name
+            }' not found.\n\nAvailable configurations: ${AVAILABLE_CONFIGS.map(
+              (c) => c.name
+            ).join(', ')}`,
+          },
+        ],
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `📋 Configuration: **${config.name}**\n🔗 URL: ${
+            config.url
+          }\n📝 Description: ${
+            config.description || 'No description available'
+          }`,
+        },
+      ],
+    };
+  },
+
+  global_config_list_contents: async (
+    args: {
+      config_name: string;
+      path?: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
     console.log('🔍 Listing repository contents...');
     console.log('Parameters:', {
+      config_name: args.config_name,
       path: args?.path || 'root',
     });
 
-    const { token, owner, repo } = getGitHubConfig();
-    const path = args?.path || '';
+    const { token, owner, repo, folder } = getGitHubConfig(
+      args.config_name,
+      credentials
+    );
+    let path = args?.path || '';
 
+    // Apply folder restrictions
+    if (folder) {
+      if (!path) {
+        path = folder; // Default to the restricted folder
+      } else {
+        path = enforceFolderSecurity(path, folder);
+      }
+    }
+
+    const folderContext = folder ? ` (restricted to "${folder}" folder)` : '';
     console.log(
       `📁 Target repository: ${owner}/${repo}${
         path ? ` (path: ${path})` : ' (root)'
-      }`
+      }${folderContext}`
     );
 
     try {
@@ -311,7 +658,9 @@ export const toolExecutors: Record<
                   `📄 File: ${contents.name}\n` +
                   `📍 Path: ${contents.path}\n` +
                   `📏 Size: ${(contents.size / 1024).toFixed(1)}KB\n` +
-                  `🔗 Download URL: ${contents.download_url}`,
+                  `🔗 Download URL: ${contents.download_url}${
+                    folderContext ? `\n🔒 Folder Restriction: ${folder}` : ''
+                  }`,
               },
             ],
           };
@@ -323,7 +672,7 @@ export const toolExecutors: Record<
 
       const resultText = `📁 Repository Contents: ${owner}/${repo}${
         path ? `/${path}` : ''
-      }\n\n${structure}`;
+      }${folderContext}\n\n${structure}`;
 
       console.log('✅ Repository contents retrieved successfully');
 
@@ -345,16 +694,29 @@ export const toolExecutors: Record<
     }
   },
 
-  config_check_file_exists: async (args: {
-    file_path: string;
-  }): Promise<ToolCallResult> => {
+  global_config_check_file_exists: async (
+    args: {
+      config_name: string;
+      file_path: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
     console.log('🔍 Checking if file exists...');
-    console.log('Parameters:', { file_path: args.file_path });
+    console.log('Parameters:', {
+      config_name: args.config_name,
+      file_path: args.file_path,
+    });
 
-    const { token, owner, repo } = getGitHubConfig();
+    const { token, owner, repo, folder } = getGitHubConfig(
+      args.config_name,
+      credentials
+    );
+
+    // Apply folder restrictions
+    const filePath = enforceFolderSecurity(args.file_path, folder);
 
     try {
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${args.file_path}`;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
       try {
         const response = await fetchGitHubAPI(apiUrl, token);
@@ -364,9 +726,11 @@ export const toolExecutors: Record<
             {
               type: 'text',
               text:
-                `✅ File exists: ${args.file_path}\n` +
+                `✅ File exists: ${filePath}\n` +
                 `📏 Size: ${(response.size / 1024).toFixed(1)}KB\n` +
-                `🔗 URL: ${response.html_url}`,
+                `🔗 URL: ${response.html_url}${
+                  folder ? `\n🔒 Folder Restriction: ${folder}` : ''
+                }`,
             },
           ],
         };
@@ -376,7 +740,9 @@ export const toolExecutors: Record<
             content: [
               {
                 type: 'text',
-                text: `❌ File does not exist: ${args.file_path}`,
+                text: `❌ File does not exist: ${filePath}${
+                  folder ? `\n🔒 Folder Restriction: ${folder}` : ''
+                }`,
               },
             ],
           };
@@ -393,25 +759,36 @@ export const toolExecutors: Record<
     }
   },
 
-  config_get_file_content: async (args: {
-    file_path: string;
-    branch?: string;
-  }): Promise<ToolCallResult> => {
+  global_config_get_file_content: async (
+    args: {
+      config_name: string;
+      file_path: string;
+      branch?: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
     console.log('📄 Getting file content...');
     console.log('Parameters:', {
+      config_name: args.config_name,
       file_path: args.file_path,
       branch: args.branch || 'main',
     });
 
-    const { token, owner, repo } = getGitHubConfig();
+    const { token, owner, repo, folder } = getGitHubConfig(
+      args.config_name,
+      credentials
+    );
     const branch = args.branch || 'main';
 
+    // Apply folder restrictions - ensure path is within allowed folder
+    const filePath = ensurePathInFolder(args.file_path, folder);
+
     try {
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${args.file_path}?ref=${branch}`;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}?ref=${branch}`;
       const response = await fetchGitHubAPI(apiUrl, token);
 
       if (response.type !== 'file') {
-        throw new Error(`Path ${args.file_path} is not a file`);
+        throw new Error(`Path ${filePath} is not a file`);
       }
 
       // Decode base64 content
@@ -422,9 +799,10 @@ export const toolExecutors: Record<
           {
             type: 'text',
             text:
-              `📄 File: ${args.file_path}\n` +
+              `📄 File: ${filePath}\n` +
               `🌿 Branch: ${branch}\n` +
-              `📏 Size: ${(response.size / 1024).toFixed(1)}KB\n\n` +
+              `📏 Size: ${(response.size / 1024).toFixed(1)}KB\n` +
+              `${folder ? `🔒 Folder Restriction: ${folder}\n` : ''}\n` +
               `📝 Content:\n\`\`\`\n${content}\n\`\`\``,
           },
         ],
@@ -439,22 +817,35 @@ export const toolExecutors: Record<
     }
   },
 
-  config_add_file: async (args: {
-    file_path: string;
-    file_content: string;
-    commit_message: string;
-    pr_title: string;
-    pr_description?: string;
-    suggested_path?: string;
-  }): Promise<ToolCallResult> => {
+  global_config_add_file: async (
+    args: {
+      config_name: string;
+      file_path: string;
+      file_content: string;
+      commit_message: string;
+      pr_title: string;
+      pr_description?: string;
+      suggested_path?: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
     console.log('🚀 Adding file to repository...');
     console.log('Parameters:', {
+      config_name: args.config_name,
       file_path: args.file_path,
       commit_message: args.commit_message,
       pr_title: args.pr_title,
     });
 
-    const { token, owner, repo } = getGitHubConfig();
+    const { token, owner, repo, folder } = getGitHubConfig(
+      args.config_name,
+      credentials
+    );
+
+    // Apply folder restrictions - ensure file is placed within allowed folder
+    const filePath = folder
+      ? ensurePathInFolder(args.file_path, folder)
+      : args.file_path;
 
     try {
       // Step 1: Check if file already exists
@@ -463,7 +854,7 @@ export const toolExecutors: Record<
       let existingSha = '';
 
       try {
-        const checkUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${args.file_path}`;
+        const checkUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
         const existingFile = await fetchGitHubAPI(checkUrl, token);
         fileExists = true;
         existingSha = existingFile.sha;
@@ -484,7 +875,7 @@ export const toolExecutors: Record<
 
       // Step 3: Create new branch
       const branchName = generateBranchName(
-        args.file_path.split('/').pop() || 'config'
+        filePath.split('/').pop() || 'config'
       );
       console.log(`🌿 Step 3: Creating branch: ${branchName}`);
 
@@ -496,7 +887,7 @@ export const toolExecutors: Record<
 
       // Step 4: Create/Update file in the new branch
       console.log('📝 Step 4: Adding file to branch...');
-      const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${args.file_path}`;
+      const fileUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
       const fileData: any = {
         message: args.commit_message,
@@ -519,16 +910,19 @@ export const toolExecutors: Record<
         base: 'main',
         body:
           args.pr_description ||
-          `Automated addition of configuration file: ${args.file_path}`,
+          `Automated addition of configuration file: ${filePath}${
+            folder ? `\n\n🔒 Folder Restriction: ${folder}` : ''
+          }`,
         draft: false,
       });
 
       const resultText =
         `🎉 Successfully ${fileExists ? 'updated' : 'added'} file!\n\n` +
-        `📄 File: ${args.file_path}\n` +
+        `📄 File: ${filePath}\n` +
         `🌿 Branch: ${branchName}\n` +
         `🔄 Pull Request: #${prResponse.number}\n` +
-        `🔗 PR URL: ${prResponse.html_url}\n\n` +
+        `🔗 PR URL: ${prResponse.html_url}\n` +
+        `${folder ? `🔒 Folder Restriction: ${folder}\n` : ''}\n` +
         `The pull request has been created and is ready for review.`;
 
       console.log('✅ File added successfully');
@@ -551,29 +945,40 @@ export const toolExecutors: Record<
     }
   },
 
-  config_smart_add_file: async (args: {
-    file_name: string;
-    file_content: string;
-    file_type?: string;
-    file_extension?: string;
-    description?: string;
-  }): Promise<ToolCallResult> => {
+  global_config_smart_add_file: async (
+    args: {
+      config_name: string;
+      file_name: string;
+      file_content: string;
+      file_type?: string;
+      file_extension?: string;
+      description?: string;
+    },
+    credentials?: GitHubCredentials
+  ): Promise<ToolCallResult> => {
     console.log('🧠 Smart file addition...');
     console.log('Parameters:', {
+      config_name: args.config_name,
       file_name: args.file_name,
       file_type: args.file_type || 'general',
       file_extension: args.file_extension || 'json',
     });
 
-    const { token, owner, repo } = getGitHubConfig();
+    const { token, owner, repo, folder } = getGitHubConfig(
+      args.config_name,
+      credentials
+    );
     const fileType = args.file_type || 'general';
     const fileExtension = args.file_extension || 'json';
 
     try {
-      // Step 1: Analyze repository structure
+      // Step 1: Analyze repository structure (restricted to folder if specified)
       console.log('🔍 Step 1: Analyzing repository structure...');
+      const analysisPath = folder || '';
       const rootContents = await fetchGitHubAPI(
-        `https://api.github.com/repos/${owner}/${repo}/contents`,
+        `https://api.github.com/repos/${owner}/${repo}/contents${
+          analysisPath ? `/${analysisPath}` : ''
+        }`,
         token
       );
 
@@ -589,6 +994,8 @@ export const toolExecutors: Record<
       let suggestedPath = '';
       let analysisResult = '';
 
+      const folderPrefix = folder ? `${folder}/` : '';
+
       if (configDirs.length > 0) {
         // Found config directories, analyze them
         console.log(
@@ -598,7 +1005,7 @@ export const toolExecutors: Record<
         for (const dir of configDirs) {
           try {
             const dirContents = await fetchGitHubAPI(
-              `https://api.github.com/repos/${owner}/${repo}/contents/${dir.name}`,
+              `https://api.github.com/repos/${owner}/${repo}/contents/${folderPrefix}${dir.name}`,
               token
             );
 
@@ -611,8 +1018,8 @@ export const toolExecutors: Record<
             );
 
             if (typeSpecificDirs.length > 0) {
-              suggestedPath = `${dir.name}/${typeSpecificDirs[0].name}/${args.file_name}.${fileExtension}`;
-              analysisResult += `✅ Found specific directory for ${fileType}: ${dir.name}/${typeSpecificDirs[0].name}\n`;
+              suggestedPath = `${folderPrefix}${dir.name}/${typeSpecificDirs[0].name}/${args.file_name}.${fileExtension}`;
+              analysisResult += `✅ Found specific directory for ${fileType}: ${folderPrefix}${dir.name}/${typeSpecificDirs[0].name}\n`;
               break;
             } else {
               // Check if there's a general subdirectory structure
@@ -620,11 +1027,11 @@ export const toolExecutors: Record<
                 (item: any) => item.type === 'dir'
               );
               if (hasSubdirs) {
-                suggestedPath = `${dir.name}/${fileType}/${args.file_name}.${fileExtension}`;
-                analysisResult += `📁 Will create new ${fileType} subdirectory in ${dir.name}\n`;
+                suggestedPath = `${folderPrefix}${dir.name}/${fileType}/${args.file_name}.${fileExtension}`;
+                analysisResult += `📁 Will create new ${fileType} subdirectory in ${folderPrefix}${dir.name}\n`;
               } else {
-                suggestedPath = `${dir.name}/${args.file_name}.${fileExtension}`;
-                analysisResult += `📄 Will place directly in ${dir.name}\n`;
+                suggestedPath = `${folderPrefix}${dir.name}/${args.file_name}.${fileExtension}`;
+                analysisResult += `📄 Will place directly in ${folderPrefix}${dir.name}\n`;
               }
             }
           } catch (error) {
@@ -633,8 +1040,8 @@ export const toolExecutors: Record<
         }
       } else {
         // No config directories found, suggest creating one
-        suggestedPath = `configs/${fileType}/${args.file_name}.${fileExtension}`;
-        analysisResult = `📁 No config directories found, will create: configs/${fileType}/\n`;
+        suggestedPath = `${folderPrefix}configs/${fileType}/${args.file_name}.${fileExtension}`;
+        analysisResult = `📁 No config directories found, will create: ${folderPrefix}configs/${fileType}/\n`;
       }
 
       // Step 2: Check if suggested file already exists
@@ -662,27 +1069,33 @@ export const toolExecutors: Record<
         `## 🔧 File Addition\n\n` +
         `**Type:** ${fileType}\n` +
         `**Name:** ${args.file_name}\n` +
-        `**Path:** ${suggestedPath}\n\n` +
+        `**Path:** ${suggestedPath}\n` +
+        `${folder ? `**Folder Restriction:** ${folder}\n` : ''}` +
         `${
           args.description ? `**Description:** ${args.description}\n\n` : ''
         }` +
         `### 📊 Repository Analysis\n${analysisResult}\n` +
         `This file was automatically placed based on repository structure analysis.`;
 
-      // Use the existing add_github_file function
-      const result = await toolExecutors.config_add_file({
-        file_path: suggestedPath,
-        file_content: args.file_content,
-        commit_message: commitMessage,
-        pr_title: prTitle,
-        pr_description: prDescription,
-      });
+      // Use the existing add_file function
+      const result = await toolExecutors.global_config_add_file(
+        {
+          config_name: args.config_name,
+          file_path: suggestedPath,
+          file_content: args.file_content,
+          commit_message: commitMessage,
+          pr_title: prTitle,
+          pr_description: prDescription,
+        },
+        credentials
+      );
 
       // Enhance the result with analysis information
       const enhancedResult =
         `🧠 Smart File Analysis Complete!\n\n` +
         `### 📊 Repository Analysis\n${analysisResult}\n` +
-        `### 📍 Suggested Placement\n${suggestedPath}\n\n` +
+        `### 📍 Suggested Placement\n${suggestedPath}\n` +
+        `${folder ? `### 🔒 Folder Restriction\n${folder}\n` : ''}\n` +
         `${result.content[0].text}`;
 
       return {

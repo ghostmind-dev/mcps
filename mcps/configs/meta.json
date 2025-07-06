@@ -1,7 +1,7 @@
 {
-  "id": "ui-8Ilv3zuKx",
+  "id": "BniUoX43K1zK",
   "name": "configs",
-  "type": "template",
+  "type": "app",
   "secrets": {
     "base": "base"
   },
@@ -20,21 +20,18 @@
     }
   },
   "terraform": {
-    "default": {
+    "run": {
       "path": "infra",
       "global": false,
       "containers": ["default"]
     }
   },
   "mcp": {
-    "update_configs": {
+    "update_global_configs": {
       "url": "http://localhost:3008/mcp",
       "headers": {
         "Authorization": "Bearer ${SERVER_TOKEN}"
       }
     }
-  },
-  "template": {
-    "init": ["run vault kv export --all", "run meta change id"]
   }
 }
