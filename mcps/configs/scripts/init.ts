@@ -1,5 +1,5 @@
-import type { CustomArgs, CustomOptions } from "jsr:@ghostmind/run";
-import { dockerRegister, terraformActivate } from "jsr:@ghostmind/run";
+import type { CustomArgs, CustomOptions } from 'jsr:@ghostmind/run';
+import { dockerRegister, terraformActivate } from 'jsr:@ghostmind/run';
 
 export default async function (_arg: CustomArgs, opts: CustomOptions) {
   const { start } = opts;
@@ -16,8 +16,8 @@ export default async function (_arg: CustomArgs, opts: CustomOptions) {
       command: terraformActivate,
       priority: 998,
       options: {
-        component: "default",
-        arch: "amd64",
+        component: 'run',
+        arch: 'amd64',
       },
     },
   });
