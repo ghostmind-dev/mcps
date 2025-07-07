@@ -34,10 +34,9 @@
     "VAULT_ADDR": "${localEnv:VAULT_ADDR}"
   },
   "mounts": [
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
-    "source=ghostmind-mcps-history,target=/commandhistory,type=volume",
-    "source=${env:HOME}${env:USERPROFILE}/projects/container/mcps,target=/Users/francoisseguin/projects/container/mcps,type=bind",
-    "source=${env:HOME}${env:USERPROFILE}/.cursor/mcp.json,target=/home/vscode/.cursor/mcp.json,type=bind"
+    "source=terminal-history-mcps,target=/commandhistory,type=volume",
+    "source=${env:HOME}${env:USERPROFILE}/projects,target=/Users/francoisseguin/projects,type=bind",
+    "source=${env:HOME}${env:USERPROFILE}/.cursor,target=/home/vscode/.cursor,type=bind"
   ],
   "runArgs": [
     "--cap-add=CAP_IPC_LOCK",
