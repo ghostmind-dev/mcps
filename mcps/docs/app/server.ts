@@ -72,7 +72,7 @@ async function handleMCPRequest(
             name: 'global-config-mcp',
             version: '1.0.0',
             description:
-              'MCP server for managing global documentation in remote repositories',
+              'MCP server for managing global configurations in remote repositories',
           },
         },
       };
@@ -105,8 +105,11 @@ async function handleMCPRequest(
         };
       }
 
-      // For tools that don't require config_name (like global_config_list)
-      if (toolName === 'global_config_list') {
+      // For tools that don't require config_name (like global_config_list and global_docs_list)
+      if (
+        toolName === 'global_config_list' ||
+        toolName === 'global_docs_list'
+      ) {
         try {
           const result = await executor(toolArgs || {});
           return {
@@ -381,7 +384,7 @@ console.log('   Required environment variables:');
 console.log('   - SERVER_TOKEN: Bearer token for MCP server authentication');
 console.log('   - GITHUB_TOKEN: GitHub Personal Access Token');
 console.log(`   - PORT: Server port (default: 3008)`);
-console.log('   Configuration catalog loaded from: confg/catalog.ts');
+console.log('   Configuration catalog loaded from: config/catalog.ts');
 console.log(
   `🌐 Server will be available at: http://localhost:${
     Number(Deno.env.get('PORT')) || 3008

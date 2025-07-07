@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window"],
+    "strict": true
+  },
+  "nodeModulesDir": "auto",
+  "tasks": {
+    "dev": "deno run --allow-net --allow-read --allow-env --watch=. server.ts",
+    "start": "deno run --allow-net --allow-read --allow-env server.ts",
+    "dev-sdk": "deno run --allow-net --allow-read --allow-env server.ts",
+    "start-sdk": "deno run --allow-net --allow-read --allow-env server.ts",
+    "test": "deno run --allow-net --allow-read --allow-env ../scripts/test.ts"
+  }
+}

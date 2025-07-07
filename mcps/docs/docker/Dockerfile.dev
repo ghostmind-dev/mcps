@@ -1,0 +1,26 @@
+# Development Dockerfile for Deno MCP Stream Server
+FROM denoland/deno:2.1.4
+
+# Set working directory
+WORKDIR /app
+
+# Copy deno configuration files first
+COPY deno.json ./
+COPY deno.lock ./
+
+# Copy the application code
+COPY server.ts ./
+COPY tools/ ./tools/
+COPY config/ ./config/
+
+# Cache dependencies and the main server file
+RUN deno cache server.ts
+
+# Expose the port
+EXPOSE 3000
+
+# Set environment variables for development
+ENV DENO_ENV=development
+
+# Run the server with watch mode for hot reload
+CMD ["deno", "run", "--allow-net", "--allow-read", "--allow-env", "--watch=.", "server.ts"]
