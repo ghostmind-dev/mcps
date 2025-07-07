@@ -1,6 +1,6 @@
 # variables.tf
 
-variable "PORT" {
+  variable "PORT" {
   type      = string
   sensitive = true
 }
@@ -45,42 +45,42 @@ variable "GCP_PROJECT_ID" {
   sensitive = true
 }
 
-
-locals {
-  env_vars = [
+  
+  locals {
+    env_vars = [
+      {
+        name  = "SERVER_TOKEN"
+        value = var.SERVER_TOKEN
+      },
     {
-      name  = "SERVER_TOKEN"
-      value = var.SERVER_TOKEN
-    },
+        name  = "GITHUB_TOKEN"
+        value = var.GITHUB_TOKEN
+      },
     {
-      name  = "GITHUB_TOKEN"
-      value = var.GITHUB_TOKEN
-    },
+        name  = "ENVIRONMENT"
+        value = var.ENVIRONMENT
+      },
     {
-      name  = "ENVIRONMENT"
-      value = var.ENVIRONMENT
-    },
+        name  = "SERVER_URL"
+        value = var.SERVER_URL
+      },
     {
-      name  = "SERVER_URL"
-      value = var.SERVER_URL
-    },
+        name  = "IMAGE_DIGEST_DEFAULT"
+        value = var.IMAGE_DIGEST_DEFAULT
+      },
     {
-      name  = "IMAGE_DIGEST_DEFAULT"
-      value = var.IMAGE_DIGEST_DEFAULT
-    },
+        name  = "PROJECT"
+        value = var.PROJECT
+      },
     {
-      name  = "PROJECT"
-      value = var.PROJECT
-    },
+        name  = "APP"
+        value = var.APP
+      },
     {
-      name  = "APP"
-      value = var.APP
-    },
-    {
-      name  = "GCP_PROJECT_ID"
-      value = var.GCP_PROJECT_ID
-    }
-  ]
-}
-
+        name  = "GCP_PROJECT_ID"
+        value = var.GCP_PROJECT_ID
+      }
+    ]
+  }
+  
   
