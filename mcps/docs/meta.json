@@ -1,6 +1,6 @@
 {
-  "id": "BniUoX43K1zK",
-  "name": "configs",
+  "id": "qp3Ts2uJntBY",
+  "name": "docs",
   "type": "app",
   "secrets": {
     "base": "base"
@@ -27,7 +27,7 @@
     }
   },
   "mcp": {
-    "_manage_global_configs": {
+    "_manage_global_docs": {
       "url": "${SERVER_URL}/mcp",
       "headers": {
         "Authorization": "Bearer ${SERVER_TOKEN}"
