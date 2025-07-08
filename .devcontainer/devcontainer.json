@@ -28,14 +28,14 @@
   "postCreateCommand": "deno run -A /usr/local/share/post-create.ts",
   "remoteEnv": {
     "SRC": "${containerWorkspaceFolder}",
-    "LOCALHOST_SRC": "${env:HOME}${env:USERPROFILE}/projects/container/mcps",
+    "LOCALHOST_SRC": "/Volumes/Projects/container/mcps",
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
     "VAULT_ROOT_TOKEN": "${localEnv:VAULT_ROOT_TOKEN}",
     "VAULT_ADDR": "${localEnv:VAULT_ADDR}"
   },
   "mounts": [
     "source=terminal-history-mcps,target=/commandhistory,type=volume",
-    "source=${env:HOME}${env:USERPROFILE}/projects,target=/Users/francoisseguin/projects,type=bind",
+    "source=/Volumes/Projects,target=/Volumes/Projects,type=bind",
     "source=${env:HOME}${env:USERPROFILE}/.cursor,target=/home/vscode/.cursor,type=bind"
   ],
   "runArgs": [
