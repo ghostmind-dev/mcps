@@ -45,6 +45,8 @@ function authenticateRequest(req: Request): boolean {
   return token === serverToken;
 }
 
+console.log(3829328);
+
 // Get all available tools (use static tools from github.ts)
 function getAllAvailableTools(): any[] {
   return tools;

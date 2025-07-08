@@ -8,6 +8,7 @@
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/ghostmind-dev/features/extensions:latest": {},
+    "ghcr.io/ghostmind-dev/features/mounts:latest": {},
     "ghcr.io/ghostmind-dev/features/themes:latest": {},
     "ghcr.io/ghostmind-dev/features/settings:1.0.5": {},
     "ghcr.io/ghostmind-dev/features/init:1.0.2": {
@@ -28,17 +29,12 @@
   "postCreateCommand": "deno run -A /usr/local/share/post-create.ts",
   "remoteEnv": {
     "SRC": "${containerWorkspaceFolder}",
-    "LOCALHOST_SRC": "${env:HOME}${env:USERPROFILE}/projects/container/mcps",
+    "LOCALHOST_SRC": "/Volumes/Projects/container/mcps",
     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
     "VAULT_ROOT_TOKEN": "${localEnv:VAULT_ROOT_TOKEN}",
     "VAULT_ADDR": "${localEnv:VAULT_ADDR}"
   },
-  "mounts": [
-    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind,consistency=cached",
-    "source=ghostmind-mcps-history,target=/commandhistory,type=volume",
-    "source=${env:HOME}${env:USERPROFILE}/projects/container/mcps,target=/Users/francoisseguin/projects/container/mcps,type=bind",
-    "source=${env:HOME}${env:USERPROFILE}/.cursor/mcp.json,target=/home/vscode/.cursor/mcp.json,type=bind"
-  ],
+  "mounts": [],
   "runArgs": [
     "--cap-add=CAP_IPC_LOCK",
     "--cap-add=NET_ADMIN",
